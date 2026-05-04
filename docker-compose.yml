@@ -1,9 +1,9 @@
 version: '3.5'
-
 services:
   mysql:
     image: mysql:8.0
     container_name: zabbix-mysql
+    command: --log_bin_trust_function_creators=1
     environment:
       MYSQL_DATABASE: zabbix
       MYSQL_USER: zabbix
@@ -11,12 +11,18 @@ services:
       MYSQL_ROOT_PASSWORD: root_pass
     volumes:
       - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uzabbix", "-pzabbix_pass"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   zabbix-server:
-    image: zabbix/zabbix-server-mysql:alpine-6.0-latest
+    image: zabbix/zabbix-server-mysql:ubuntu-6.0-latest
     container_name: zabbix-server
     depends_on:
-      - mysql
+      mysql:
+        condition: service_healthy
     environment:
       DB_SERVER_HOST: mysql
       MYSQL_DATABASE: zabbix
@@ -24,12 +30,16 @@ services:
       MYSQL_PASSWORD: zabbix_pass
     ports:
       - "10051:10051"
+    restart: unless-stopped
 
   zabbix-web:
-    image: zabbix/zabbix-web-apache-mysql:alpine-6.0-latest
+    image: zabbix/zabbix-web-apache-mysql:ubuntu-6.0-latest
     container_name: zabbix-web
     depends_on:
-      - zabbix-server
+      mysql:
+        condition: service_healthy
+      zabbix-server:
+        condition: service_started
     environment:
       DB_SERVER_HOST: mysql
       MYSQL_DATABASE: zabbix
@@ -39,6 +49,7 @@ services:
       PHP_TZ: Africa/Luanda
     ports:
       - "8080:8080"
+    restart: unless-stopped
 
   grafana:
     image: grafana/grafana:latest
@@ -47,6 +58,7 @@ services:
       - "3000:3000"
     volumes:
       - grafana_data:/var/lib/grafana
+    restart: unless-stopped
 
 volumes:
   mysql_data:
