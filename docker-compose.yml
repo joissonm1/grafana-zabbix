@@ -50,6 +50,20 @@ services:
     ports:
       - "8080:8080"
     restart: unless-stopped
+    
+  zabbix-agent:
+    image: zabbix/zabbix-agent:ubuntu-6.0-latest
+    container_name: zabbix-agent
+    environment:
+      ZBX_HOSTNAME: "Zabbix server"
+      ZBX_SERVER_HOST: zabbix-server
+      ZBX_SERVER_PORT: 10051
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /dev:/host/dev:ro
+    privileged: true
+    restart: unless-stopped  
 
   grafana:
     image: grafana/grafana:latest
